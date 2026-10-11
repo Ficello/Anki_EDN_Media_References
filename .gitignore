@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+meta.json
+*.log
+*.db
+.vscode/
+.idea/

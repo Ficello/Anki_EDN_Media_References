@@ -1,0 +1,16 @@
+{
+    "mode": "append",
+    "deck_filter": "",
+    "citation_style": "vancouver",
+    "online_enrichment": true,
+    "custom_mappings": {},
+    "custom_template": "",
+    "tag_modified_cards": "",
+    "tag_missing_source": "",
+    "flag_missing_source": 0,
+    "mention_missing_source": "",
+    "include_images": true,
+    "include_audio": false,
+    "include_video": false,
+    "notify_on_complete": true
+}

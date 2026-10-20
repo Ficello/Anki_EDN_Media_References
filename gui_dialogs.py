@@ -8,9 +8,14 @@ Interfaces graphiques pour l'addon Media References :
 
 import html
 import os
+import re
 from typing import Optional, List, Dict, Any
 
 from aqt import mw
+try:
+    from aqt.operations import QueryOp
+except ImportError:
+    QueryOp = None
 from aqt.qt import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QComboBox,
     QRadioButton, QButtonGroup, QCheckBox, QLineEdit, QTableWidget,
@@ -281,48 +286,51 @@ class BatchExtractDialog(QDialog):
         self.progress_bar.setMaximum(len(nids))
         self.progress_bar.setValue(0)
         self.status_label.setText(tr("status_analyzing", n=len(nids)))
-        mw.app.processEvents()
-
         self.table.setRowCount(0)
-        preview_results: List[NoteProcessResult] = []
 
-        for idx, nid in enumerate(nids):
-            try:
-                note = mw.col.get_note(nid)
-                notetype = note.note_type()
-                res = self.processor.process_note_data(note, notetype, preview_only=True)
-                if res.modified:
-                    preview_results.append(res)
-            except Exception:
-                pass
+        def _bg_preview(col):
+            results = []
+            for nid in nids:
+                try:
+                    note = col.get_note(nid)
+                    notetype = note.note_type()
+                    res = self.processor.process_note_data(note, notetype, preview_only=True)
+                    if res.modified:
+                        model_name = notetype.get("name", "") if notetype else ""
+                        results.append((res, model_name))
+                except Exception:
+                    pass
+            return results
 
-            if idx % 10 == 0:
-                self.progress_bar.setValue(idx)
-                mw.app.processEvents()
+        def _on_preview_done(results):
+            self.progress_bar.setVisible(False)
+            self.table.setRowCount(len(results))
 
-        self.progress_bar.setVisible(False)
-        self.table.setRowCount(len(preview_results))
+            for row, (res, model_name) in enumerate(results):
+                self.table.setItem(row, 0, QTableWidgetItem(str(res.nid)))
+                self.table.setItem(row, 1, QTableWidgetItem(model_name))
+                self.table.setItem(row, 2, QTableWidgetItem(res.target_field or ""))
 
-        for row, res in enumerate(preview_results):
-            try:
-                note = mw.col.get_note(res.nid)
-                model_name = note.note_type().get("name", "")
-            except Exception:
-                model_name = ""
+                clean_old = re.sub(r'<[^>]+>', ' ', res.old_value).strip()
+                clean_new = re.sub(r'<[^>]+>', ' ', res.new_value).strip()
 
-            self.table.setItem(row, 0, QTableWidgetItem(str(res.nid)))
-            self.table.setItem(row, 1, QTableWidgetItem(model_name))
-            self.table.setItem(row, 2, QTableWidgetItem(res.target_field or ""))
+                self.table.setItem(row, 3, QTableWidgetItem(clean_old))
+                self.table.setItem(row, 4, QTableWidgetItem(clean_new))
 
-            clean_old = re.sub(r'<[^>]+>', ' ', res.old_value).strip()
-            clean_new = re.sub(r'<[^>]+>', ' ', res.new_value).strip()
+            self.status_label.setText(
+                tr("status_preview_done", mod=len(results), total=len(nids))
+            )
 
-            self.table.setItem(row, 3, QTableWidgetItem(clean_old))
-            self.table.setItem(row, 4, QTableWidgetItem(clean_new))
-
-        self.status_label.setText(
-            tr("status_preview_done", mod=len(preview_results), total=len(nids))
-        )
+        if QueryOp and mw:
+            QueryOp(
+                parent=self,
+                op=_bg_preview,
+                success=_on_preview_done
+            ).with_progress(tr("status_analyzing", n=len(nids))).run_in_background()
+        else:
+            col = mw.col if mw and hasattr(mw, "col") else None
+            results = _bg_preview(col)
+            _on_preview_done(results)
 
     def _run_apply(self):
         nids = self._get_target_nids()

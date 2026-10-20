@@ -10,6 +10,13 @@ from .metadata_extractor import MediaMetadata
 from .i18n import tr
 
 
+def _is_safe_url(url: Optional[str]) -> bool:
+    if not url:
+        return False
+    clean = url.strip().lower()
+    return clean.startswith("http://") or clean.startswith("https://")
+
+
 class ReferenceFormatter:
     """Formate les métadonnées de médias en citations selon le style choisi (Zotero-like)."""
 
@@ -62,7 +69,7 @@ class ReferenceFormatter:
             segments.append(source_part)
 
         if meta.license:
-            if meta.license.startswith("http"):
+            if _is_safe_url(meta.license):
                 lic_name = self._beautify_license_url(meta.license)
                 segments.append(f'sous licence <a href="{html.escape(meta.license)}" rel="noopener noreferrer">{html.escape(lic_name)}</a>')
             else:
@@ -73,10 +80,16 @@ class ReferenceFormatter:
         if meta.doi:
             doi_clean = html.escape(meta.doi)
             doi_url = f"https://doi.org/{meta.doi}" if not meta.doi.startswith("http") else meta.doi
-            segments.append(f'DOI: <a href="{html.escape(doi_url)}" rel="noopener noreferrer">{doi_clean}</a>')
+            if _is_safe_url(doi_url):
+                segments.append(f'DOI: <a href="{html.escape(doi_url)}" rel="noopener noreferrer">{doi_clean}</a>')
+            else:
+                segments.append(f'DOI: {doi_clean}')
         elif meta.source_url:
             label = tr("source_link") if len(segments) > 0 else (meta.source or tr("source_link"))
-            segments.append(f'<a href="{html.escape(meta.source_url)}" rel="noopener noreferrer">{html.escape(label)}</a>')
+            if _is_safe_url(meta.source_url):
+                segments.append(f'<a href="{html.escape(meta.source_url)}" rel="noopener noreferrer">{html.escape(label)}</a>')
+            else:
+                segments.append(html.escape(label))
 
         if not segments:
             return ""
@@ -101,9 +114,15 @@ class ReferenceFormatter:
         link_str = ""
         if meta.doi:
             doi_url = f"https://doi.org/{meta.doi}" if not meta.doi.startswith("http") else meta.doi
-            link_str = f'<a href="{html.escape(doi_url)}" rel="noopener noreferrer">https://doi.org/{html.escape(meta.doi)}</a>'
+            if _is_safe_url(doi_url):
+                link_str = f'<a href="{html.escape(doi_url)}" rel="noopener noreferrer">https://doi.org/{html.escape(meta.doi)}</a>'
+            else:
+                link_str = f"https://doi.org/{html.escape(meta.doi)}"
         elif meta.source_url:
-            link_str = f'<a href="{html.escape(meta.source_url)}" rel="noopener noreferrer">{html.escape(meta.source_url)}</a>'
+            if _is_safe_url(meta.source_url):
+                link_str = f'<a href="{html.escape(meta.source_url)}" rel="noopener noreferrer">{html.escape(meta.source_url)}</a>'
+            else:
+                link_str = html.escape(meta.source_url)
 
         parts = [p for p in [author, year_str, title_str, source_str, link_str] if p]
         return ". ".join(parts).strip()
@@ -123,9 +142,15 @@ class ReferenceFormatter:
         link_str = ""
         if meta.doi:
             doi_url = f"https://doi.org/{meta.doi}" if not meta.doi.startswith("http") else meta.doi
-            link_str = f'DOI: <a href="{html.escape(doi_url)}" rel="noopener noreferrer">{html.escape(meta.doi)}</a>'
+            if _is_safe_url(doi_url):
+                link_str = f'DOI: <a href="{html.escape(doi_url)}" rel="noopener noreferrer">{html.escape(meta.doi)}</a>'
+            else:
+                link_str = f'DOI: {html.escape(meta.doi)}'
         elif meta.source_url:
-            link_str = f'<a href="{html.escape(meta.source_url)}" rel="noopener noreferrer">{html.escape(meta.source_url)}</a>'
+            if _is_safe_url(meta.source_url):
+                link_str = f'<a href="{html.escape(meta.source_url)}" rel="noopener noreferrer">{html.escape(meta.source_url)}</a>'
+            else:
+                link_str = html.escape(meta.source_url)
 
         parts = [p for p in [header, title_str, source_str, link_str] if p]
         return ". ".join(parts).strip()
@@ -146,9 +171,15 @@ class ReferenceFormatter:
         link_str = ""
         if meta.doi:
             doi_url = f"https://doi.org/{meta.doi}" if not meta.doi.startswith("http") else meta.doi
-            link_str = f'<a href="{html.escape(doi_url)}" rel="noopener noreferrer">doi:{html.escape(meta.doi)}</a>'
+            if _is_safe_url(doi_url):
+                link_str = f'<a href="{html.escape(doi_url)}" rel="noopener noreferrer">doi:{html.escape(meta.doi)}</a>'
+            else:
+                link_str = f"doi:{html.escape(meta.doi)}"
         elif meta.source_url:
-            link_str = f'<a href="{html.escape(meta.source_url)}" rel="noopener noreferrer">{html.escape(meta.source_url)}</a>'
+            if _is_safe_url(meta.source_url):
+                link_str = f'<a href="{html.escape(meta.source_url)}" rel="noopener noreferrer">{html.escape(meta.source_url)}</a>'
+            else:
+                link_str = html.escape(meta.source_url)
 
         parts = [p for p in [author, title_str, middle, link_str] if p]
         return " ".join(parts).strip()
@@ -157,7 +188,7 @@ class ReferenceFormatter:
         """Style Simple / Compact."""
         parts = []
         label = meta.source or meta.title or tr("source_link")
-        if meta.source_url:
+        if meta.source_url and _is_safe_url(meta.source_url):
             parts.append(f'<a href="{html.escape(meta.source_url)}" rel="noopener noreferrer">{html.escape(label)}</a>')
         else:
             parts.append(html.escape(label))

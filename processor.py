@@ -97,27 +97,48 @@ def find_actual_media_path(media_dir: str, filename: str) -> Optional[str]:
     if not media_dir or not filename:
         return None
 
+    safe_filename = os.path.basename(filename)
+    if not safe_filename or safe_filename in (".", ".."):
+        return None
+
+    real_media_dir = os.path.abspath(media_dir)
+
+    def _safe_check(target_name: str) -> Optional[str]:
+        target_base = os.path.basename(target_name)
+        if not target_base or target_base in (".", ".."):
+            return None
+        candidate_path = os.path.abspath(os.path.join(real_media_dir, target_base))
+        try:
+            if os.path.commonpath([real_media_dir, candidate_path]) != real_media_dir:
+                return None
+        except ValueError:
+            return None
+        if os.path.isfile(candidate_path):
+            return candidate_path
+        return None
+
     # 1. Chemin direct
-    direct_path = os.path.join(media_dir, filename)
-    if os.path.isfile(direct_path):
-        return direct_path
+    res = _safe_check(safe_filename)
+    if res:
+        return res
 
     # 2. Décodage URL
-    unquoted = urllib.parse.unquote(filename)
-    p = os.path.join(media_dir, unquoted)
-    if os.path.isfile(p):
-        return p
+    unquoted = urllib.parse.unquote(safe_filename)
+    unquoted = os.path.basename(unquoted)
+    res = _safe_check(unquoted)
+    if res:
+        return res
 
     # 3. Normalisation Unicode (NFC / NFD)
     nfc = unicodedata.normalize("NFC", unquoted)
-    p = os.path.join(media_dir, nfc)
-    if os.path.isfile(p):
-        return p
+    res = _safe_check(nfc)
+    if res:
+        return res
 
     nfd = unicodedata.normalize("NFD", unquoted)
-    p = os.path.join(media_dir, nfd)
-    if os.path.isfile(p):
-        return p
+    res = _safe_check(nfd)
+    if res:
+        return res
 
     # 4. Encodage latin1 / cp1252
     try:
@@ -125,9 +146,9 @@ def find_actual_media_path(media_dir: str, filename: str) -> Optional[str]:
         for enc in ("utf-8", "cp1252", "iso-8859-1"):
             try:
                 dec = raw_bytes.decode(enc)
-                p = os.path.join(media_dir, dec)
-                if os.path.isfile(p):
-                    return p
+                res = _safe_check(dec)
+                if res:
+                    return res
             except Exception:
                 pass
     except Exception:
@@ -135,12 +156,12 @@ def find_actual_media_path(media_dir: str, filename: str) -> Optional[str]:
 
     # 5. Recherche avec préfixe si caractères accentués tronqués
     try:
-        base_prefix = filename[:15] if len(filename) > 15 else filename
-        for candidate in os.listdir(media_dir):
+        base_prefix = safe_filename[:15] if len(safe_filename) > 15 else safe_filename
+        for candidate in os.listdir(real_media_dir):
             if candidate.startswith(base_prefix):
-                p = os.path.join(media_dir, candidate)
-                if os.path.isfile(p):
-                    return p
+                res = _safe_check(candidate)
+                if res:
+                    return res
     except Exception:
         pass
 

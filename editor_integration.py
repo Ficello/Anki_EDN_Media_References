@@ -63,10 +63,7 @@ def extract_references_for_editor(editor: Editor) -> None:
 
     def run_bg():
         processor = MediaReferenceProcessor(media_dir, config)
-        res = processor.process_note_data(note, notetype, preview_only=False)
-        if res.modified and mw and mw.col:
-            mw.col.update_note(note)
-        return res
+        return processor.process_note_data(note, notetype, preview_only=True)
 
     def on_done(future):
         try:
@@ -77,6 +74,16 @@ def extract_references_for_editor(editor: Editor) -> None:
         if not res:
             return
 
+        current_note = _get_editor_note(editor)
+        if res.modified and current_note and current_note.id == note_id and res.target_field:
+            if hasattr(current_note, "__setitem__"):
+                current_note[res.target_field] = res.new_value
+            if res.tag_to_add and hasattr(current_note, "add_tag"):
+                current_note.add_tag(res.tag_to_add)
+            if mw and mw.col:
+                mw.col.update_note(current_note)
+            reload_editor_note(editor)
+
         # Fenêtre hôte de l'éditeur (ex: Navigateur, Édition en cours, Ajouter)
         editor_window = None
         if editor:
@@ -84,11 +91,6 @@ def extract_references_for_editor(editor: Editor) -> None:
                 editor_window = editor.parentWindow
             elif hasattr(editor, "widget") and editor.widget:
                 editor_window = editor.widget.window()
-
-        # Si l'éditeur est toujours sur la même note, on rafraîchit l'affichage
-        current_note = _get_editor_note(editor)
-        if editor and current_note and current_note.id == note_id:
-            reload_editor_note(editor)
 
         # Maintenir le focus sur la fenêtre d'édition pour éviter d'être renvoyé vers mw
         if editor_window and hasattr(editor_window, "isVisible") and editor_window.isVisible():

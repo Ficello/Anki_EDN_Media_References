@@ -27,14 +27,28 @@ def run_batch_on_selected_notes(browser: Browser) -> None:
     config = get_config()
     processor = MediaReferenceProcessor(media_dir, config)
 
-    stats = processor.process_notes_batch(browser.col, note_ids, preview_only=False)
-    browser.model.reset()
-    mw.reset()
+    def _op(col):
+        return processor.process_notes_batch(col, note_ids, preview_only=False)
 
-    tooltip(
-        tr("toast_browser_done", mod=stats.notes_modified, total=len(note_ids)),
-        parent=browser
-    )
+    def _on_done(stats):
+        if hasattr(browser, "model") and hasattr(browser.model, "reset"):
+            browser.model.reset()
+        mw.reset()
+        tooltip(
+            tr("toast_browser_done", mod=stats.notes_modified, total=len(note_ids)),
+            parent=browser
+        )
+
+    try:
+        from aqt.operations import QueryOp
+        QueryOp(
+            parent=browser,
+            op=_op,
+            success=_on_done
+        ).with_progress(tr("dialog_title_batch")).run_in_background()
+    except Exception:
+        stats = _op(browser.col)
+        _on_done(stats)
 
 
 def open_dialog_for_selected_notes(browser: Browser) -> None:

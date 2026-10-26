@@ -418,7 +418,7 @@ class BatchExtractDialog(QDialog):
                 f"<p>• <b>{tr('success_analyzed', n=stats.total_notes)}</b><br>"
                 f"• <b>{tr('success_updated', n=stats.notes_modified)}</b></p>"
                 f"<hr>"
-                f"<p><b>📊 {tr('stats_media_detected', n=stats.media_found)}</b><br>"
+                f"<p><b>{tr('stats_media_detected', n=stats.media_found)}</b><br>"
                 f"{tr('stats_local_found', n=stats.local_meta_found)}<br>"
                 f"{tr('stats_missing_source', n=stats.notes_missing_source)}<br>"
                 f"<b>{tr('stats_total_refs', n=stats.media_with_meta)}</b></p>"
@@ -430,7 +430,7 @@ class BatchExtractDialog(QDialog):
 
             if is_in_review:
                 short_msg = (
-                    f"✅ Extraction terminée en arrière-plan !\n"
+                    f"Extraction terminée en arrière-plan.\n"
                     f"• {stats.notes_modified} cartes modifiées / signalées sur {stats.total_notes}\n"
                     f"• {stats.media_with_meta} références trouvées\n"
                     f"(Consultez 'Outils > Dernières statistiques' pour le bilan complet)"
@@ -460,7 +460,7 @@ def show_last_stats_dialog(parent=None):
         f"<p>• <b>{tr('success_analyzed', n=stats.total_notes)}</b><br>"
         f"• <b>{tr('success_updated', n=stats.notes_modified)}</b></p>"
         f"<hr>"
-        f"<p><b>📊 {tr('stats_media_detected', n=stats.media_found)}</b><br>"
+        f"<p><b>{tr('stats_media_detected', n=stats.media_found)}</b><br>"
         f"{tr('stats_local_found', n=stats.local_meta_found)}<br>"
         f"{tr('stats_missing_source', n=stats.notes_missing_source)}<br>"
         f"<b>{tr('stats_total_refs', n=stats.media_with_meta)}</b></p>"
